@@ -309,7 +309,6 @@ on boot
 
 # msm specific files that need to be created on /data
 on post-fs-data
-    start ril-daemon
     mkdir /tombstones/modem 0771 system system
     mkdir /tombstones/lpass 0771 system system
     mkdir /tombstones/wcnss 0771 system system
@@ -506,6 +505,10 @@ on post-fs-data
 
     setprop vold.post_fs_data_done 1
 
+    #Start RILD
+	start ril-daemon
+
+	
 service vendor.charger /charger
     class charger
     group log
