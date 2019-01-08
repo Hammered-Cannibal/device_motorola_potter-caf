@@ -508,6 +508,7 @@ on post-fs-data
     #Start RILD
 	start ril-daemon
 
+	chmod 0660 /dev/stml0xx
 	
 service vendor.charger /charger
     class charger
