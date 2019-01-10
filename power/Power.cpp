@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
- * Copyright (C) 2017-2018 The LineageOS Project
+ * Copyright (C) 2017 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,14 @@
  * limitations under the License.
  */
 
+#ifdef V1_0_HAL
+#define LOG_TAG "android.hardware.power@1.0-service-qti"
+#else
 #define LOG_TAG "android.hardware.power@1.1-service-qti"
+#endif
 
-// #define LOG_NDEBUG 0
-
-#include <log/log.h>
+#include <android/log.h>
+#include <utils/Log.h>
 #include "Power.h"
 #include "power-common.h"
 #include "power-helper.h"
@@ -32,14 +35,20 @@ extern struct stat_pair rpm_stat_map[];
 namespace android {
 namespace hardware {
 namespace power {
+#ifdef V1_0_HAL
+namespace V1_0 {
+#else
 namespace V1_1 {
+#endif
 namespace implementation {
 
 using ::android::hardware::power::V1_0::Feature;
 using ::android::hardware::power::V1_0::PowerHint;
 using ::android::hardware::power::V1_0::PowerStatePlatformSleepState;
 using ::android::hardware::power::V1_0::Status;
+#ifndef V1_0_HAL
 using ::android::hardware::power::V1_1::PowerStateSubsystem;
+#endif
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
@@ -55,7 +64,7 @@ Return<void> Power::setInteractive(bool interactive)  {
 }
 
 Return<void> Power::powerHint(PowerHint hint, int32_t data) {
-    power_hint(static_cast<power_hint_t>(hint), &data);
+    power_hint(static_cast<power_hint_t>(hint), data ? (&data) : NULL);
     return Void();
 }
 
@@ -66,15 +75,8 @@ Return<void> Power::setFeature(Feature feature, bool activate)  {
 
 Return<void> Power::getPlatformLowPowerStats(getPlatformLowPowerStats_cb _hidl_cb) {
     hidl_vec<PowerStatePlatformSleepState> states;
-#ifdef NO_STATS
-    states.resize(0);
-    _hidl_cb(states, Status::SUCCESS);
-    return Void();
-#else
     uint64_t stats[MAX_PLATFORM_STATS * MAX_RPM_PARAMS] = {0};
-#ifndef LEGACY_STATS
     uint64_t *values;
-#endif
     struct PowerStatePlatformSleepState *state;
     int ret;
 
@@ -163,12 +165,11 @@ Return<void> Power::getPlatformLowPowerStats(getPlatformLowPowerStats_cb _hidl_c
 done:
     _hidl_cb(states, Status::SUCCESS);
     return Void();
-#endif
 }
 
+#ifndef V1_0_HAL
 // Methods from ::android::hardware::power::V1_1::IPower follow.
 
-#ifndef NO_WLAN_STATS
 static int get_wlan_low_power_stats(struct PowerStateSubsystem &subsystem) {
 
     uint64_t stats[WLAN_POWER_PARAMS_COUNT] = {0};
@@ -200,15 +201,10 @@ static int get_wlan_low_power_stats(struct PowerStateSubsystem &subsystem) {
 
     return 0;
 }
-#endif
 
 Return<void> Power::getSubsystemLowPowerStats(getSubsystemLowPowerStats_cb _hidl_cb) {
+
     hidl_vec<PowerStateSubsystem> subsystems;
-#ifdef NO_WLAN_STATS
-    subsystems.resize(0);
-    _hidl_cb(subsystems, Status::SUCCESS);
-    return Void();
-#else
     int ret;
 
     subsystems.resize(subsystem_type::SUBSYSTEM_COUNT);
@@ -223,30 +219,16 @@ Return<void> Power::getSubsystemLowPowerStats(getSubsystemLowPowerStats_cb _hidl
 done:
     _hidl_cb(subsystems, Status::SUCCESS);
     return Void();
-#endif
 }
 
 Return<void> Power::powerHintAsync(PowerHint hint, int32_t data) {
     // just call the normal power hint in this oneway function
     return powerHint(hint, data);
 }
-
-status_t Power::registerAsSystemService() {
-    status_t ret = 0;
-
-    ret = IPower::registerAsService();
-    if (ret != 0) {
-        ALOGE("Failed to register IPower (%d)", ret);
-        goto fail;
-    } else {
-        ALOGI("Successfully registered IPower");
-    }
-fail:
-    return ret;
-}
+#endif
 
 }  // namespace implementation
-}  // namespace V1_1
+}  // namespace V1_0/1
 }  // namespace power
 }  // namespace hardware
 }  // namespace android
